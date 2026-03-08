@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Local Go Arena</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  </head>
+  <body>
+    <div class="shell">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">LOCAL GO ARENA</p>
+          <h1>ローカルで打てる囲碁アプリ</h1>
+          <p class="intro">
+            9路盤、13路盤、19路盤。二人対戦と CPU 対戦。日本ルールと中国ルールの切り替えに対応した、
+            Flask ベースのローカル囲碁アプリです。
+          </p>
+        </div>
+        <div class="hero-card">
+          <div id="headline" class="headline"></div>
+          <div id="message" class="message"></div>
+        </div>
+      </section>
+
+      <section class="control-panel">
+        <label>
+          <span>盤サイズ</span>
+          <select id="size">
+            <option value="9">9</option>
+            <option value="13">13</option>
+            <option value="19" selected>19</option>
+          </select>
+        </label>
+        <label>
+          <span>モード</span>
+          <select id="mode">
+            <option value="cpu" selected>一人モード (CPU)</option>
+            <option value="pvp">二人モード</option>
+          </select>
+        </label>
+        <label>
+          <span>ルール</span>
+          <select id="ruleset">
+            <option value="japanese" selected>日本ルール</option>
+            <option value="chinese">中国ルール</option>
+          </select>
+        </label>
+        <label>
+          <span>コミ</span>
+          <input id="komi" type="number" step="0.5" value="6.5" />
+        </label>
+        <label>
+          <span>人間の色</span>
+          <select id="human-color">
+            <option value="1" selected>黒</option>
+            <option value="-1">白</option>
+          </select>
+        </label>
+        <button id="new-game" class="primary">新規対局</button>
+        <button id="pass">パス</button>
+        <button id="undo">待った</button>
+        <button id="resign" class="danger">投了</button>
+      </section>
+
+      <main class="board-layout">
+        <section class="board-panel">
+          <canvas id="board" width="880" height="880"></canvas>
+        </section>
+        <aside class="stats-panel">
+          <div class="stat-card">
+            <h2>対局情報</h2>
+            <div id="meta" class="meta-grid"></div>
+          </div>
+          <div class="stat-card">
+            <h2>スコア</h2>
+            <div id="score" class="score-grid"></div>
+          </div>
+          <div class="stat-card notes">
+            <h2>メモ</h2>
+            <p>連続 2 パスで終局します。</p>
+            <p>日本ルールは地 + アゲハマ、 中国ルールは地 + 盤上石数で簡易採点します。</p>
+            <p>死活判定の手動確定までは入れていません。</p>
+          </div>
+        </aside>
+      </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+  </body>
+</html>
