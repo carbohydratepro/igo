@@ -36,8 +36,10 @@ class GameSession:
             return
         move = self.ai.choose_move(self.game)
         if move is None:
-            self.game.pass_turn()
+            result = self.game.pass_turn()
             self.message = "CPU passed."
+            if result.success and self.game.scoring_mode:
+                self.message = "Both players passed. Mark dead stones, then finalize scoring."
         else:
             x, y = move
             result = self.game.play_move(x, y)
@@ -46,6 +48,10 @@ class GameSession:
                 self.message += f" Captured {result.captured} stone(s)."
 
     def apply_move(self, x, y):
+        if self.game.scoring_mode:
+            ok, message = self.game.toggle_dead_group(x, y)
+            self.message = message
+            return ok, message
         if self.is_cpu_turn():
             return False, "It is currently the CPU's turn."
         result = self.game.play_move(x, y)
@@ -54,22 +60,30 @@ class GameSession:
         self.message = f"{player_name(-self.game.turn)} played at {x + 1}, {y + 1}."
         if result.captured:
             self.message += f" Captured {result.captured} stone(s)."
-        if not self.game.game_over:
+        if self.game.scoring_mode:
+            self.message = "Both players passed. Mark dead stones, then finalize scoring."
+        elif not self.game.game_over:
             self.maybe_cpu_turn()
         return True, self.message
 
     def pass_turn(self):
+        if self.game.scoring_mode:
+            return False, "Scoring is active. Finalize scoring or resume play."
         if self.is_cpu_turn():
             return False, "It is currently the CPU's turn."
         result = self.game.pass_turn()
         if not result.success:
             return False, result.reason
         self.message = f"{player_name(-self.game.turn)} passed."
-        if not self.game.game_over:
+        if self.game.scoring_mode:
+            self.message = "Both players passed. Mark dead stones, then finalize scoring."
+        elif not self.game.game_over:
             self.maybe_cpu_turn()
         return True, self.message
 
     def resign(self):
+        if self.game.scoring_mode:
+            return False, "Scoring is active. Finalize scoring or resume play."
         if self.is_cpu_turn():
             return False, "It is currently the CPU's turn."
         self.game.resign()
@@ -83,6 +97,16 @@ class GameSession:
         self.message = "Undid the previous move."
         return True, self.message
 
+    def finalize_scoring(self):
+        ok, message = self.game.finalize_scoring()
+        self.message = message
+        return ok, message
+
+    def resume_play(self):
+        ok, message = self.game.resume_play()
+        self.message = message
+        return ok, message
+
     def state_payload(self):
         score = self.game.score()
         if self.game.game_over:
@@ -93,6 +117,8 @@ class GameSession:
                     f"{player_name(score['winner'])} wins by {score['margin']:.1f}. "
                     f"Black {score['black_score']:.1f} - White {score['white_score']:.1f}"
                 )
+        elif self.game.scoring_mode:
+            headline = "Scoring phase"
         else:
             headline = f"{player_name(self.game.turn)} to play"
             if self.is_cpu_turn():
@@ -105,9 +131,11 @@ class GameSession:
             "captures": self.game.captures,
             "move_number": self.game.move_number,
             "pass_count": self.game.pass_count,
+            "scoring_mode": self.game.scoring_mode,
             "game_over": self.game.game_over,
             "winner": self.game.winner,
             "last_move": self.game.last_move,
+            "marked_dead": sorted([list(point) for point in self.game.marked_dead]),
             "ruleset": self.game.ruleset,
             "rules_label": rules_name(self.game.ruleset),
             "komi": self.game.komi,
@@ -125,6 +153,10 @@ class GameSession:
                 "black_territory": len(score["territory"][BLACK]),
                 "white_territory": len(score["territory"][WHITE]),
                 "neutral_points": len(score["neutral"]),
+                "dead_black": score["dead_counts"][BLACK],
+                "dead_white": score["dead_counts"][WHITE],
+                "captures_black": score["captures"][BLACK],
+                "captures_white": score["captures"][WHITE],
             },
         }
 
@@ -185,6 +217,24 @@ def resign():
 @app.post("/api/undo")
 def undo():
     ok, message = session.undo()
+    state = session.state_payload()
+    state["ok"] = ok
+    state["message"] = message
+    return jsonify(state), 200 if ok else 400
+
+
+@app.post("/api/finalize-scoring")
+def finalize_scoring():
+    ok, message = session.finalize_scoring()
+    state = session.state_payload()
+    state["ok"] = ok
+    state["message"] = message
+    return jsonify(state), 200 if ok else 400
+
+
+@app.post("/api/resume-play")
+def resume_play():
+    ok, message = session.resume_play()
     state = session.state_payload()
     state["ok"] = ok
     state["message"] = message

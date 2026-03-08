@@ -15,6 +15,8 @@ const elements = {
   newGame: document.getElementById("new-game"),
   pass: document.getElementById("pass"),
   undo: document.getElementById("undo"),
+  resumePlay: document.getElementById("resume-play"),
+  finalizeScoring: document.getElementById("finalize-scoring"),
   resign: document.getElementById("resign"),
 };
 
@@ -108,6 +110,21 @@ function drawBoard() {
     });
   });
 
+  if (state.marked_dead) {
+    state.marked_dead.forEach(([x, y]) => {
+      const px = margin + x * step;
+      const py = margin + y * step;
+      ctx.strokeStyle = "#cf2f1e";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(px - 10, py - 10);
+      ctx.lineTo(px + 10, py + 10);
+      ctx.moveTo(px + 10, py - 10);
+      ctx.lineTo(px - 10, py + 10);
+      ctx.stroke();
+    });
+  }
+
   if (state.last_move && Number.isInteger(state.last_move[0])) {
     const [x, y] = state.last_move;
     const px = margin + x * step;
@@ -142,11 +159,20 @@ function renderState(nextState) {
     <div>白地</div><strong>${state.score.white_territory}</strong>
     <div>黒の石数</div><strong>${state.score.black_stones}</strong>
     <div>白の石数</div><strong>${state.score.white_stones}</strong>
+    <div>黒の死石</div><strong>${state.score.dead_black}</strong>
+    <div>白の死石</div><strong>${state.score.dead_white}</strong>
+    <div>黒アゲハマ</div><strong>${state.score.captures_black}</strong>
+    <div>白アゲハマ</div><strong>${state.score.captures_white}</strong>
     <div>中立点</div><strong>${state.score.neutral_points}</strong>
     <div>黒スコア</div><strong>${state.score.black_score.toFixed(1)}</strong>
     <div>白スコア</div><strong>${state.score.white_score.toFixed(1)}</strong>
     <div>暫定勝者</div><strong>${playerLabel(state.score.winner)}</strong>
   `;
+
+  elements.pass.disabled = state.scoring_mode;
+  elements.resign.disabled = state.scoring_mode;
+  elements.resumePlay.disabled = !state.scoring_mode;
+  elements.finalizeScoring.disabled = !state.scoring_mode;
 
   drawBoard();
 }
@@ -231,6 +257,22 @@ elements.undo.addEventListener("click", async () => {
 elements.resign.addEventListener("click", async () => {
   try {
     await requestJson("/api/resign", { method: "POST", body: "{}" });
+  } catch (error) {
+    console.error(error);
+  }
+});
+
+elements.resumePlay.addEventListener("click", async () => {
+  try {
+    await requestJson("/api/resume-play", { method: "POST", body: "{}" });
+  } catch (error) {
+    console.error(error);
+  }
+});
+
+elements.finalizeScoring.addEventListener("click", async () => {
+  try {
+    await requestJson("/api/finalize-scoring", { method: "POST", body: "{}" });
   } catch (error) {
     console.error(error);
   }
